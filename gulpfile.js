@@ -1,46 +1,49 @@
+import { isDev, isTest } from './gulp/common/constants.js';
+import buildPages from './gulp/build-pages.js';
+import buildScripts from './gulp/build-scripts.js';
+import buildSprite from './gulp/build-sprite.js';
+import buildSsrScript from './gulp/build-ssr-script.js';
+import buildStyles from './gulp/build-styles.js';
+import buildWebp from './gulp/build-webp.js';
+import copyStatic from './gulp/copy-static.js';
+import { deleteAsync } from 'del';
 import gulp from 'gulp';
-import browserSync from 'browser-sync';
-import del from 'del';
-import styles from './gulp/compileStyles.mjs';
-import { copy, copyImages, copySvg } from './gulp/copyAssets.mjs';
-import js from './gulp/compileScripts.mjs';
-import {optimizeSvg, sprite, createWebp, optimizePng, optimizeJpg} from './gulp/optimizeImages.mjs';
+import lintEditorconfig from './gulp/lint-editorconfig.js';
+import lintMarkdown from './gulp/lint-markdown.js';
+import lintScripts from './gulp/lint-scripts.js';
+import lintStyles from './gulp/lint-styles.js';
+import placeFavicons from './gulp/place-favicons.js';
+import placeImages from './gulp/place-images.js';
+import placePixelperfectImages from './gulp/place-pixelperfect-images.js';
+import placeSpriteIcons from './gulp/place-sprite-icons.js';
+import watch from './gulp/watch.js';
 
-const server = browserSync.create();
-const streamStyles = () => styles().pipe(server.stream());
+const cleanOnStart = () => deleteAsync('build');
+const cleanOnEnd = () => deleteAsync('build/scripts/apps');
 
-const clean = () => del('build');
+const lint = gulp.parallel(lintEditorconfig, lintMarkdown, lintScripts, lintStyles);
 
-const syncServer = () => {
-  server.init({
-    server: 'build/',
-    index: 'sitemap.html',
-    notify: false,
-    open: true,
-    cors: true,
-    ui: false,
-  });
+const test = gulp.series(
+	buildSsrScript,
+	gulp.parallel(lint, buildPages, buildScripts, buildStyles),
+	cleanOnEnd
+);
 
-  gulp.watch('source/**.html', gulp.series(copy, refresh));
-  gulp.watch('source/sass/**/*.{scss,sass}', streamStyles);
-  gulp.watch('source/js/**/*.{js,json}', gulp.series(js, refresh));
-  gulp.watch('source/data/**/*.{js,json}', gulp.series(copy, refresh));
-  gulp.watch('source/img/**/*.svg', gulp.series(copySvg, sprite, refresh));
-  gulp.watch('source/img/**/*.{png,jpg,webp}', gulp.series(copyImages, refresh));
+const build = gulp.series(
+	cleanOnStart,
+	gulp.parallel(
+		buildScripts,
+		buildSsrScript,
+		buildStyles,
+		lint,
+		placeFavicons,
+		placeImages,
+		placePixelperfectImages,
+		placeSpriteIcons
+	),
+	gulp.parallel(buildSprite, buildWebp),
+	isDev ? watch : gulp.parallel(buildPages, copyStatic),
+	cleanOnEnd
+);
 
-  gulp.watch('source/favicon/**', gulp.series(copy, refresh));
-  gulp.watch('source/video/**', gulp.series(copy, refresh));
-  gulp.watch('source/downloads/**', gulp.series(copy, refresh));
-  gulp.watch('source/*.php', gulp.series(copy, refresh));
-};
-
-const refresh = (done) => {
-  server.reload();
-  done();
-};
-
-const build = gulp.series(clean, copy, sprite, gulp.parallel(styles, js, optimizePng, optimizeJpg, optimizeSvg));
-const dev = gulp.series(clean, copy, sprite, gulp.parallel(styles, js, optimizePng, optimizeJpg, optimizeSvg), syncServer);
-const start = gulp.series(clean, copy, sprite, gulp.parallel(styles, js), syncServer);
-
-export { createWebp as webp, build, start, dev};
+export default isTest ? test : build;

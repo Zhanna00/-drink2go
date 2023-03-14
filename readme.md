@@ -1,17 +1,46 @@
-## Краткая инструкция по работе
-Для начала работы у вас должент быть установлен **Node.js**
+# gulp-template
 
-### Основные команды для работы
-- Установка - `npm i`
-- Запуск локального сервера без минификаций - `npm start`
-- Запуск локального сервера c минификациями, <br>
-данный вариант не используется в разработке, <br>
-он нужен только для тестов производительности <br>
-на локальном хосте  - `npm run dev`
-- Сборка проекта, минификация скриптов <br>
-и оптимизация изображений перед деплоем на прод - `npm run build`
-- Запуск тестирования на соответствия кодгайдам - `npm test`
-- Создание webp изображений в директории source - `npm run webp`
+Стартовый шаблон для сборки сайта, основанного на HTML-файлах.
 
-### Вся разработка ведётся в директории `source`
-### Итоговый код попадает в директорию `build`
+## Команды терминала
+
+- Установка зависимостей: `npm ci`
+- Сборка проекта в каталог `build`: `npm run build`
+- Запуск в режиме разработки: `npm run dev`
+- Запуск линтеров и валидаторов: `npm test`
+- Запуск автоформатирования: `npm run format`
+
+## Создание изоморфных приложений
+
+### С помощью vue
+
+```js
+// source/apps/page.js
+import Page from '../blocks/page.vue';
+import Vue from 'vue';
+export default (data) =>
+  new Vue({
+    data,
+    render: (cb) => cb(Page)
+  });
+
+// source/main.js
+import createApp from './apps/page.js';
+createApp({ appData: window.appData.page }).$mount('.page');
+```
+
+### С помощью Svelte
+
+```js
+// source/apps/page.js
+import Page from '../blocks/page.svelte';
+export default Page;
+
+// source/main.js
+import App from './apps/page.js';
+new App({
+  hydrate: true,
+  props: { appData: window.appData.page },
+  target: document.querySelector('.page')
+});
+```
